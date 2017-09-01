@@ -186,12 +186,9 @@ func (hdr *ICMPHdr) String() string {
 // after user fills IPv4 pointer to right place inside packet he can use its fields like
 // packet.IPv4.SrcAddr or packet.IPv4.DstAddr.
 type Packet struct {
-	IPv4 *IPv4Hdr       // Pointer to L3 header in mbuf (must be nil before parsing)
-	IPv6 *IPv6Hdr       // Pointer to L3 header in mbuf (must be nil before parsing)
-	TCP  *TCPHdr        // Pointer to L4 header in mbuf (must be nil before parsing)
-	UDP  *UDPHdr        // Pointer to L4 header in mbuf (must be nil before parsing)
-	ICMP *ICMPHdr       // Pointer to L4 header in mbuf (must be nil before parsing)
-	Data unsafe.Pointer // Pointer to the packet payload data (invalid before parsing)
+	L3   unsafe.Pointer // Pointer to L3 header in mbuf
+	L4   unsafe.Pointer // Pointer to L4 header in mbuf
+	Data unsafe.Pointer // Pointer to the packet payload data
 
 	// Last two fields of this structure is filled during InitMbuf macros inside low.c file
 	// Need to change low.c for all changes in these fields or adding/removing fields before them.
@@ -209,227 +206,98 @@ func (packet *Packet) Start() uintptr {
 	return uintptr(unsafe.Pointer(packet.Ether))
 }
 
-// ParseData set pointer to Data in packet.
-// Data is considered to be everything after Ethernet header.
-func (packet *Packet) ParseData() {
-	packet.Data = unsafe.Pointer(packet.unparsed())
+func (packet *Packet) ParseL3() {
+	packet.L3 = packet.unparsed()
 }
 
-// ParseIPv4 set pointer to IPv4 header in packet.
-func (packet *Packet) ParseIPv4() {
-	packet.IPv4 = (*IPv4Hdr)(unsafe.Pointer(packet.unparsed()))
-}
-
-// ParseIPv4Data set pointer to IPv4 header and Data in packet.
-// Data is considered to be everything after the header.
-func (packet *Packet) ParseIPv4Data() {
-	packet.IPv4 = (*IPv4Hdr)(unsafe.Pointer(packet.unparsed()))
-	packet.Data = unsafe.Pointer(packet.unparsed() + uintptr((packet.IPv4.VersionIhl&0x0f)<<2))
-}
-
-// ParseIPv6 set pointer to IPv6 header in packet.
-func (packet *Packet) ParseIPv6() {
-	packet.IPv6 = (*IPv6Hdr)(unsafe.Pointer(packet.unparsed()))
-}
-
-// ParseIPv6Data set pointer to IPv6 header and Data in packet.
-// Data is considered to be everything after the header.
-func (packet *Packet) ParseIPv6Data() {
-	packet.IPv6 = (*IPv6Hdr)(unsafe.Pointer(packet.unparsed()))
-	packet.Data = unsafe.Pointer(packet.unparsed() + IPv6Len)
-}
-
-// ParseIPv4TCP set pointers to IPv4, TCP headers in packet.
-func (packet *Packet) ParseIPv4TCP() {
-	packet.IPv4 = (*IPv4Hdr)(unsafe.Pointer(packet.unparsed()))
-	packet.TCP = (*TCPHdr)(unsafe.Pointer(packet.unparsed() + uintptr((packet.IPv4.VersionIhl&0x0f)<<2)))
-}
-
-// ParseIPv4TCPData set pointers to IPv4, TCP headers and Data in packet.
-// Data is considered to be everything after the headers.
-func (packet *Packet) ParseIPv4TCPData() {
-	packet.IPv4 = (*IPv4Hdr)(unsafe.Pointer(packet.unparsed()))
-	packet.TCP = (*TCPHdr)(unsafe.Pointer(packet.unparsed() + uintptr((packet.IPv4.VersionIhl&0x0f)<<2)))
-	packet.Data = unsafe.Pointer(packet.unparsed() + uintptr((packet.IPv4.VersionIhl&0x0f)<<2) + uintptr((packet.TCP.DataOff&0xf0)>>2))
-}
-
-// ParseIPv4UDP set pointers to IPv4, UDP headers in packet.
-func (packet *Packet) ParseIPv4UDP() {
-	packet.IPv4 = (*IPv4Hdr)(unsafe.Pointer(packet.unparsed()))
-	packet.UDP = (*UDPHdr)(unsafe.Pointer(packet.unparsed() + uintptr((packet.IPv4.VersionIhl&0x0f)<<2)))
-}
-
-// ParseIPv4UDPData set pointers to IPv4, UDP headers in packet.
-// Data is considered to be everything after the headers.
-func (packet *Packet) ParseIPv4UDPData() {
-	packet.IPv4 = (*IPv4Hdr)(unsafe.Pointer(packet.unparsed()))
-	packet.UDP = (*UDPHdr)(unsafe.Pointer(packet.unparsed() + uintptr((packet.IPv4.VersionIhl&0x0f)<<2)))
-	packet.Data = unsafe.Pointer(packet.unparsed() + uintptr((packet.IPv4.VersionIhl&0x0f)<<2) + UDPLen)
-}
-
-// ParseIPv6TCP will parse L4 level protocol only if there are no extended headers
-// after IPv6 fix header. However fix IPv6 part will be parsed anyway.
-func (packet *Packet) ParseIPv6TCP() {
-	packet.IPv6 = (*IPv6Hdr)(unsafe.Pointer(packet.unparsed()))
-	if packet.IPv6.Proto == TCPNumber {
-		packet.TCP = (*TCPHdr)(unsafe.Pointer(packet.unparsed() + IPv6Len))
-	}
-}
-
-// ParseIPv6TCPData will parse L4 level protocol and Data only if there are no extended headers
-// after IPv6 fix header. However fix IPv6 part will be parsed anyway.
-func (packet *Packet) ParseIPv6TCPData() {
-	packet.IPv6 = (*IPv6Hdr)(unsafe.Pointer(packet.unparsed()))
-	if packet.IPv6.Proto == TCPNumber {
-		packet.TCP = (*TCPHdr)(unsafe.Pointer(packet.unparsed() + IPv6Len))
-		packet.Data = unsafe.Pointer(packet.unparsed() + IPv6Len + uintptr((packet.TCP.DataOff&0xf0)>>2))
-	}
-}
-
-// ParseIPv6UDP will parse L4 level protocol only if there are no extended headers
-// after IPv6 fix header. However fix IPv6 part will be parsed anyway.
-func (packet *Packet) ParseIPv6UDP() {
-	packet.IPv6 = (*IPv6Hdr)(unsafe.Pointer(packet.unparsed()))
-	if packet.IPv6.Proto == UDPNumber {
-		packet.UDP = (*UDPHdr)(unsafe.Pointer(packet.unparsed() + IPv6Len))
-	}
-}
-
-// ParseIPv6UDPData will parse L4 level protocol and Data only if there are no extended headers
-// after IPv6 fix header. However fix IPv6 part will be parsed anyway.
-func (packet *Packet) ParseIPv6UDPData() {
-	packet.IPv6 = (*IPv6Hdr)(unsafe.Pointer(packet.unparsed()))
-	if packet.IPv6.Proto == UDPNumber {
-		packet.UDP = (*UDPHdr)(unsafe.Pointer(packet.unparsed() + IPv6Len))
-		packet.Data = unsafe.Pointer(packet.unparsed() + IPv6Len + UDPLen)
-	}
-}
-
-// ParseTCP takes offset to beginning of TCP header as parameter. Offset is needed, because
-// length of L3 level protocol can be different, so parsing L4 without L3 is applicable
-// only with manual offset. Usually these offset will be 14 + 20 for IPv4 and 14 + 40 for IPv6.
-func (packet *Packet) ParseTCP(offset uint8) {
-	packet.TCP = (*TCPHdr)(unsafe.Pointer(packet.unparsed() + uintptr(offset)))
-}
-
-// ParseTCPData like ParseTCP with Data
-func (packet *Packet) ParseTCPData(offset uint8) {
-	packet.TCP = (*TCPHdr)(unsafe.Pointer(packet.unparsed() + uintptr(offset)))
-	packet.Data = unsafe.Pointer(packet.unparsed() + uintptr(offset) + uintptr(packet.TCP.DataOff&0xf0)>>2)
-}
-
-// ParseUDP takes offset to beginning of UDP header as parameter. Offset is needed, because
-// length of L3 level protocol can be different, so parsing L4 without L3 is applicable
-// only with manual offset. Usually these offset will be 14 + 20 for IPv4 and 14 + 40 for IPv6.
-func (packet *Packet) ParseUDP(offset uint8) {
-	packet.UDP = (*UDPHdr)(unsafe.Pointer(packet.unparsed() + uintptr(offset)))
-}
-
-// ParseICMP takes offset to beginning of UDP header as parameter. Offset is needed, because
-// length of L3 level protocol can be different, so parsing L4 without L3 is applicable
-// only with manual offset. Usually these offset will be 14 + 20 for IPv4 and 14 + 40 for IPv6.
-func (packet *Packet) ParseICMP(offset uint8) {
-	packet.ICMP = (*ICMPHdr)(unsafe.Pointer(packet.unparsed() + uintptr(offset)))
-}
-
-// ParseUDPData like ParseUDP with Data
-func (packet *Packet) ParseUDPData(offset uint8) {
-	packet.UDP = (*UDPHdr)(unsafe.Pointer(packet.unparsed() + uintptr(offset)))
-	packet.Data = unsafe.Pointer(packet.unparsed() + uintptr(offset) + UDPLen)
-}
-
-// ParseL3 fills L3 layer pointers: either IPv4 or IPv6.
-// Returns length of IP headers and L4 layer protocol ID.
-// Return (-1, 0) if protocols are neither IPv4 nor IPv6 or if IPv6 has
-// additional components. Such packets aren't supported now.
-func (packet *Packet) ParseL3() (int, uint8) {
-	// TODO here and in other conditions we should investigate possibility of using packetType
-	// from mbuf. It is hardware optimization of some network cards.
+func (packet *Packet) GetIPv4() *IPv4Hdr {
 	if packet.Ether.EtherType == SwapBytesUint16(IPV4Number) {
-		packet.IPv4 = (*IPv4Hdr)(unsafe.Pointer(packet.unparsed()))
-		return int((packet.IPv4.VersionIhl & 0x0f) << 2), packet.IPv4.NextProtoID
+		return (*IPv4Hdr)(packet.L3)
 	}
+	return nil
+}
+
+func (packet *Packet) GetIPv6() *IPv6Hdr {
 	if packet.Ether.EtherType == SwapBytesUint16(IPV6Number) {
-		packet.IPv6 = (*IPv6Hdr)(unsafe.Pointer(packet.unparsed()))
-		if packet.IPv6.Proto == TCPNumber || packet.IPv6.Proto == UDPNumber {
-			return IPv6Len, packet.IPv6.Proto
-		}
+		return (*IPv6Hdr)(packet.L3)
 	}
-	return -1, 0
+	return nil
 }
 
-// ParseL3Data fills L3 layer pointers: either IPv4 or IPv6, and also fills Data pointer.
-// Returns length of IP headers and L4 layer protocol ID.
-// Return (-1, 0) if protocols are neither IPv4 nor IPv6 or if IPv6 has
-// additional components. Such packets aren't supported now.
-func (packet *Packet) ParseL3Data() (int, uint8) {
-	if packet.Ether.EtherType == SwapBytesUint16(IPV4Number) {
-		packet.IPv4 = (*IPv4Hdr)(unsafe.Pointer(packet.unparsed()))
-		dataOffset := int((packet.IPv4.VersionIhl & 0x0f) << 2)
-		packet.Data = unsafe.Pointer(packet.unparsed() + uintptr(dataOffset))
-		return dataOffset, packet.IPv4.NextProtoID
-	}
-	if packet.Ether.EtherType == SwapBytesUint16(IPV6Number) {
-		packet.IPv6 = (*IPv6Hdr)(unsafe.Pointer(packet.unparsed()))
-		if packet.IPv6.Proto == TCPNumber || packet.IPv6.Proto == UDPNumber {
-			dataOffset := IPv6Len
-			packet.Data = unsafe.Pointer(packet.unparsed() + uintptr(dataOffset))
-			return dataOffset, packet.IPv6.Proto
-		}
-	}
-	return -1, 0
+func (packet *Packet) ParseL4ForIPv4() {
+	packet.L4 = unsafe.Pointer(packet.unparsed() + uintptr((packet.IPv4.VersionIhl&0x0f)<<2))
 }
 
-// ParseL4 fills L3 and L4 layers pointers: TCP, UDP or ICMP.
-// Returns summary length of all L3 + L4 headers. Returns -1 if L4 is
-// neither TCP nor UDP nor ICMP or previous protocols have problems.
-func (packet *Packet) ParseL4() int {
-	L, L4Type := packet.ParseL3()
-	if L == -1 {
-		return -1
-	}
-	if L4Type == TCPNumber {
-		packet.TCP = (*TCPHdr)(unsafe.Pointer(packet.unparsed() + uintptr(L)))
-		return L + int((packet.TCP.DataOff&0xf0)>>2)
-	}
-	if L4Type == UDPNumber {
-		packet.UDP = (*UDPHdr)(unsafe.Pointer(packet.unparsed() + uintptr(L)))
-		return L + UDPLen
-	}
-	if L4Type == ICMPNumber {
-		packet.ICMP = (*ICMPHdr)(unsafe.Pointer(packet.unparsed() + uintptr(L)))
-		return L + ICMPLen
-	}
-	return -1
+func (packet *Packet) ParseL4ForIPv6() {
+	packet.L4 = unsafe.Pointer(packet.unparsed() + uintptr(IPv6Len))
 }
 
-// ParseL4Data fills L2, L3 and L4 layers pointers: either TCP or UDP,
-// and also fills Data pointer. Returns summary length of all these headers.
-// Returns -1 if L4 is neither TCP nor UDP or previous protocols have problems.
-func (packet *Packet) ParseL4Data() int {
-	L, L4Type := packet.ParseL3()
-	if L == -1 {
-		return -1
+func (packet *Packet) GetTCPForIPv4() *TCPHdr {
+	if packet.IPv4.NextProtoID == TCPNumber {
+		return (*TCPHdr)(packet.L4)
 	}
-	if L4Type == TCPNumber {
-		packet.TCP = (*TCPHdr)(unsafe.Pointer(packet.unparsed() + uintptr(L)))
-		dataOffset := L + int((packet.TCP.DataOff&0xf0)>>2)
-		packet.Data = unsafe.Pointer(packet.unparsed() + uintptr(dataOffset))
-		return dataOffset
+	return nil
+}
+
+func (packet *Packet) GetTCPForIPv6() *TCPHdr {
+	if packet.IPv6.Proto == TCPNumber {
+		return (*TCPHdr)(packet.L4)
 	}
-	if L4Type == UDPNumber {
-		packet.UDP = (*UDPHdr)(unsafe.Pointer(packet.unparsed() + uintptr(L)))
-		dataOffset := L + UDPLen
-		packet.Data = unsafe.Pointer(packet.unparsed() + uintptr(dataOffset))
-		return dataOffset
+	return nil
+}
+
+func (packet *Packet) GetUDPForIPv4() *UDPHdr {
+	if packet.IPv4.NextProtoID == UDPNumber {
+		return (*UDPHdr)(packet.L4)
 	}
-	if L4Type == ICMPNumber {
-		packet.ICMP = (*ICMPHdr)(unsafe.Pointer(packet.unparsed() + uintptr(L)))
-		dataOffset := L + ICMPLen
-		packet.Data = unsafe.Pointer(packet.unparsed() + uintptr(dataOffset))
-		return dataOffset
+	return nil
+}
+
+func (packet *Packet) GetUDPForIPv6() *UDPHdr {
+	if packet.IPv6.Proto == UDPNumber {
+		return (*UDPHdr)(packet.L4)
 	}
-	return -1
+	return nil
+}
+
+func (packet *Packet) GetICMPForIPv4() *ICMPHdr {
+	if packet.IPv4.NextProtoID == ICMPNumber {
+		return (*TCPHdr)(packet.L4)
+	}
+	return nil
+}
+
+func (packet *Packet) GetICMPForIPv6() *ICMPHdr {
+	if packet.IPv6.Proto == ICMPNumber {
+		return (*UDPHdr)(packet.L4)
+	}
+	return nil
+}
+
+func (packet *Packet) ParseAllKnownL3() (*IPv4Hdr, *IPv6Hdr) {
+	packet.ParseL3()
+	return GetIPv4(), GetIPv6()
+}
+
+func (packet *Packet) ParseAllKnownL4ForIPv4() (*TCPHdr, *UDPHdr, *ICMPHdr) {
+	packet.ParseL4ForIPv4()
+	return GetTCPForIPv4(), GetUDPForIPv4(), GetICMPForIPv4()
+}
+
+func (packet *Packet) ParseAllKnownL4ForIPv6() (*TCPHdr, *UDPHdr, *ICMPHdr) {
+	packet.ParseL4ForIPv6()
+	return GetTCPForIPv6(), GetUDPForIPv6(), GetICMPForIPv6()
+}
+
+func (packet *Packet) ParseL7(uint protocol) {
+	switch protocol {
+	case TCPNumber:
+		packet.Data = unsafe.Pointer(uintptr(packet.L4) + uintptr(packet.L4.DataOff&0xf0)>>2)
+	case UDPNumber:
+		packet.Data = unsafe.Pointer(uintptr(packet.L4) + uintptr(UDPLen))
+	case ICMPNumber:
+		packet.Data = unsafe.Pointer(uintptr(packet.L4) + uintptr(ICMPLen))
+	}
 }
 
 // ExtractPacketAddr extracts packet structure from mbuf used in package flow
