@@ -56,7 +56,8 @@ func main() {
 }
 
 func l3Separator(currentPacket *packet.Packet, context flow.UserContext) bool {
-	currentPacket.ParseIPv4()
+	currentPacket.ParseL3L4()
+
 	localL2Rules := l2Rules
 	localL3Rules := l3Rules
 	return rules.L2ACLPermit(currentPacket, localL2Rules) &&

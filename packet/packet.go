@@ -232,6 +232,15 @@ func (packet *Packet) ParseL4ForIPv6() {
 	packet.L4 = unsafe.Pointer(packet.unparsed() + uintptr(IPv6Len))
 }
 
+func (packet *Packet) ParseL3L4() {
+	ipv4, ipv6 := packet.ParseAllKnownL3()
+	if ipv4 != nil {
+		packet.ParseL4ForIPv4()
+	} else if ipv6 != nil {
+		packet.ParseL4ForIPv6()
+	}
+}
+
 func (packet *Packet) GetTCPForIPv4() *TCPHdr {
 	if packet.GetIPv4().NextProtoID == TCPNumber {
 		return (*TCPHdr)(packet.L4)
@@ -290,14 +299,9 @@ func (packet *Packet) ParseAllKnownL4ForIPv6() (*TCPHdr, *UDPHdr, *ICMPHdr) {
 }
 
 func (packet *Packet) ParseL7(protocol uint) {
-	ipv4, ipv6 := packet.ParseAllKnownL3()
 	switch protocol {
 	case TCPNumber:
-		if ipv4 != nil {
-			packet.Data = unsafe.Pointer(uintptr(packet.L4) + uintptr(packet.GetTCPForIPv4().DataOff&0xf0)>>2)
-		} else if ipv6 != nil {
-			packet.Data = unsafe.Pointer(uintptr(packet.L4) + uintptr(packet.GetTCPForIPv6().DataOff&0xf0)>>2)
-		}
+		packet.Data = unsafe.Pointer(uintptr(packet.L4) + uintptr(((*TCPHdr)(packet.L4)).DataOff&0xf0)>>2)
 	case UDPNumber:
 		packet.Data = unsafe.Pointer(uintptr(packet.L4) + uintptr(UDPLen))
 	case ICMPNumber:
