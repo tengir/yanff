@@ -6,6 +6,7 @@ package main
 
 import (
 	"flag"
+
 	"github.com/intel-go/yanff/flow"
 	"github.com/intel-go/yanff/packet"
 	"github.com/intel-go/yanff/rules"
@@ -51,6 +52,5 @@ func main() {
 }
 
 func l3Separator(pkt *packet.Packet, context flow.UserContext) bool {
-	pkt.ParseIPv4UDP()
 	return rules.L3ACLPermit(pkt, l3Rules)
 }

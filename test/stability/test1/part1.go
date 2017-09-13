@@ -13,8 +13,7 @@ import (
 
 	"github.com/intel-go/yanff/flow"
 	"github.com/intel-go/yanff/packet"
-
-	"github.com/intel-go/yanff/test/stability/test1/common"
+	"github.com/intel-go/yanff/test/stability/test1/test1Common"
 )
 
 const (
@@ -100,7 +99,7 @@ func generatePacket(emptyPacket *packet.Packet, context flow.UserContext) {
 	emptyPacket.Ether.DAddr = [6]uint8{0xde, 0xad, 0xbe, 0xaf, 0xff, 0xfe}
 
 	sent := atomic.LoadUint64(&sentPackets)
-	ptr := (*common.Packetdata)(emptyPacket.Data)
+	ptr := (*test1Common.Packetdata)(emptyPacket.Data)
 	// Put a unique non-zero value here
 	ptr.F1 = sent + 1
 	ptr.F2 = 0
@@ -111,12 +110,12 @@ func generatePacket(emptyPacket *packet.Packet, context flow.UserContext) {
 func checkPackets(pkt *packet.Packet, context flow.UserContext) {
 	newValue := atomic.AddUint64(&receivedPackets, 1)
 
-	offset := pkt.ParseL4Data()
+	offset := pkt.ParseData()
 	if offset < 0 {
 		println("ParseL4 returned negative value", offset)
 		atomic.StoreInt32(&passed, 0)
 	} else {
-		ptr := (*common.Packetdata)(pkt.Data)
+		ptr := (*test1Common.Packetdata)(pkt.Data)
 
 		if ptr.F1 != ptr.F2 {
 			fmt.Printf("Data mismatch in the packet, read %x and %x\n", ptr.F1, ptr.F2)

@@ -309,6 +309,33 @@ func (packet *Packet) ParseL7(protocol uint) {
 	}
 }
 
+// ParseData parses L3, L4 and fills the field packet.Data.
+// returns 0 in case of success and -1 in case of
+// failure to parse L3 or L4.
+func (packet *Packet) ParseData() int {
+	var pktTCP *TCPHdr
+	var pktUDP *UDPHdr
+	var pktICMP *ICMPHdr
+
+	pktIPv4, pktIPv6 := packet.ParseAllKnownL3()
+	if pktIPv4 != nil {
+		pktTCP, pktUDP, pktICMP = packet.ParseAllKnownL4ForIPv4()
+	} else if pktIPv6 != nil {
+		pktTCP, pktUDP, pktICMP = packet.ParseAllKnownL4ForIPv6()
+	}
+
+	if pktTCP != nil {
+		packet.Data = unsafe.Pointer(uintptr(packet.L4) + uintptr(((*TCPHdr)(packet.L4)).DataOff&0xf0)>>2)
+	} else if pktUDP != nil {
+		packet.Data = unsafe.Pointer(uintptr(packet.L4) + uintptr(UDPLen))
+	} else if pktICMP != nil {
+		packet.Data = unsafe.Pointer(uintptr(packet.L4) + uintptr(ICMPLen))
+	} else {
+		return -1
+	}
+	return 0
+}
+
 // ExtractPacketAddr extracts packet structure from mbuf used in package flow
 func ExtractPacketAddr(IN uintptr) uintptr {
 	return IN + mbufStructSize
