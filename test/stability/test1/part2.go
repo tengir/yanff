@@ -11,7 +11,7 @@ import (
 	"github.com/intel-go/yanff/flow"
 	"github.com/intel-go/yanff/packet"
 
-	"github.com/intel-go/yanff/test/stability/test1/common"
+	"github.com/intel-go/yanff/test/stability/test1/test1Common"
 )
 
 var (
@@ -41,14 +41,14 @@ func main() {
 }
 
 func fixPacket(pkt *packet.Packet, context flow.UserContext) {
-	offset := pkt.ParseL4Data()
+	offset := pkt.ParseData()
 	if offset < 0 {
 		println("ParseL4 returned negative value", offset)
 		println("TEST FAILED")
 		return
 	}
 
-	ptr := (*common.Packetdata)(pkt.Data)
+	ptr := (*test1Common.Packetdata)(pkt.Data)
 	if ptr.F2 != 0 {
 		fmt.Printf("Bad data found in the packet: %x\n", ptr.F2)
 		println("TEST FAILED")
