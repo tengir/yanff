@@ -28,6 +28,40 @@ func main() {
 		defer step2.Close()
 	}
 
-	fmt.Fprintln(step2, "set 2 dst mac", config[*target][0])
-	fmt.Fprintln(step2, "set 3 dst mac", config[*target][1])
+	fmt.Fprintln(step2, "set 0 dst mac", config[*target][0])
+	fmt.Fprintln(step2, "set 1 dst mac", config[*target][1])
+
+	// Write script file for step4
+	step4, err := os.Create(*pktgenDir + string(os.PathSeparator) + "step4.pg")
+    if err != nil {
+		log.Fatal(err)
+	} else {
+		defer step4.Close()
+	}
+
+	fmt.Fprintln(step4, "range 0 dst mac start", config[*target][0])
+	fmt.Fprintln(step4, "range 1 dst mac start", config[*target][1])
+	fmt.Fprintln(step4, `range 0 dst port start 50
+range 0 dst port min 50
+range 0 dst port max 60
+range 0 dst port inc 1
+enable 0 range
+`)
+
+	// Write script file for step5
+	step5, err := os.Create(*pktgenDir + string(os.PathSeparator) + "step5.pg")
+    if err != nil {
+		log.Fatal(err)
+	} else {
+		defer step5.Close()
+	}
+
+	fmt.Fprintln(step5, "range 0 dst mac start", config[*target][0])
+	fmt.Fprintln(step5, "range 1 dst mac start", config[*target][1])
+	fmt.Fprintln(step5, `range 0 src ip start 111.2.0.0
+range 0 src ip min 111.2.0.0
+range 0 src ip max 111.2.0.3
+range 0 src ip inc 0.0.0.1
+enable 0 range
+`)
 }

@@ -18,7 +18,7 @@ func main() {
 	flow.SetHandler(firstFlow, modifyPacket[0], nil)
 	flow.SetHandler(secondFlow, modifyPacket[1], nil)
 	flow.SetSender(firstFlow, 0)
-	flow.SetSender(secondFlow, 1)
+	flow.SetStopper(secondFlow)
 	flow.SystemStart()
 }
 
