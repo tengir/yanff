@@ -44,6 +44,11 @@ func myHandler(curV []*packet.Packet, num uint, ctx flow.UserContext) {
 		cur.IPv4.VersionIhl = 0x45
 		cur.IPv4.NextProtoID = 0x04
 	}
+	// Some heavy computational code
+	heavyCode()
+}
+
+func heavyCode() {
 	for i := 0; i < 1000000; i++ {}
 }
 
