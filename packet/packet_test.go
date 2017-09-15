@@ -466,7 +466,7 @@ func TestInitEmptyPacket(t *testing.T) {
 	gtPkt := ExtractPacket(gtMb[0])
 	GeneratePacketFromByte(gtPkt, gtBuf)
 
-	buf := (*[1 << 30]byte)(unsafe.Pointer(pkt.Start()))[:EtherLen]
+	buf := (*[1 << 30]byte)(pkt.StartAtOffset(0))[:EtherLen]
 	// DEEP equal for whole packet buffer
 	if !reflect.DeepEqual(buf, gtBuf) {
 		t.Errorf("Incorrect result:\ngot:  %x, \nwant: %x\n\n", buf, gtBuf)
@@ -496,7 +496,7 @@ func TestInitEmptyIPv4Packet(t *testing.T) {
 	GeneratePacketFromByte(gtPkt, gtBuf)
 
 	size := EtherLen + IPv4MinLen + testPlSize
-	buf := (*[1 << 30]byte)(unsafe.Pointer(pkt.Start()))[:size]
+	buf := (*[1 << 30]byte)(pkt.StartAtOffset(0))[:size]
 	if !reflect.DeepEqual(buf, gtBuf) {
 		t.Errorf("Incorrect result:\ngot:  %x, \nwant: %x\n\n", buf, gtBuf)
 	}
@@ -521,7 +521,7 @@ func TestInitEmptyIPv6Packet(t *testing.T) {
 	GeneratePacketFromByte(gtPkt, gtBuf)
 
 	size := EtherLen + IPv6Len + testPlSize
-	buf := (*[1 << 30]byte)(unsafe.Pointer(pkt.Start()))[:size]
+	buf := (*[1 << 30]byte)(pkt.StartAtOffset(0))[:size]
 	if !reflect.DeepEqual(buf, gtBuf) {
 		t.Errorf("Incorrect result:\ngot:  %x, \nwant: %x\n\n", buf, gtBuf)
 	}
@@ -547,7 +547,7 @@ func TestInitEmptyIPv4TCPPacket(t *testing.T) {
 	GeneratePacketFromByte(gtPkt, gtBuf)
 
 	size := EtherLen + IPv4MinLen + TCPMinLen + testPlSize
-	buf := (*[1 << 30]byte)(unsafe.Pointer(pkt.Start()))[:size]
+	buf := (*[1 << 30]byte)(pkt.StartAtOffset(0))[:size]
 	if !reflect.DeepEqual(buf, gtBuf) {
 		t.Errorf("Incorrect result:\ngot:  %x, \nwant: %x\n\n", buf, gtBuf)
 	}
@@ -573,7 +573,7 @@ func TestInitEmptyIPv4UDPPacket(t *testing.T) {
 	GeneratePacketFromByte(gtPkt, gtBuf)
 
 	size := EtherLen + IPv4MinLen + UDPLen + testPlSize
-	buf := (*[1 << 30]byte)(unsafe.Pointer(pkt.Start()))[:size]
+	buf := (*[1 << 30]byte)(pkt.StartAtOffset(0))[:size]
 	if !reflect.DeepEqual(buf, gtBuf) {
 		t.Errorf("Incorrect result:\ngot:  %x, \nwant: %x\n\n", buf, gtBuf)
 	}
@@ -599,7 +599,7 @@ func TestInitEmptyIPv6TCPPacket(t *testing.T) {
 	GeneratePacketFromByte(gtPkt, gtBuf)
 
 	size := EtherLen + IPv6Len + TCPMinLen + testPlSize
-	buf := (*[1 << 30]byte)(unsafe.Pointer(pkt.Start()))[:size]
+	buf := (*[1 << 30]byte)(pkt.StartAtOffset(0))[:size]
 	if !reflect.DeepEqual(buf, gtBuf) {
 		t.Errorf("Incorrect result:\ngot:  %x, \nwant: %x\n\n", buf, gtBuf)
 	}
@@ -625,7 +625,7 @@ func TestInitEmptyIPv6UDPPacket(t *testing.T) {
 	GeneratePacketFromByte(gtPkt, gtBuf)
 
 	size := EtherLen + IPv6Len + UDPLen + testPlSize
-	buf := (*[1 << 30]byte)(unsafe.Pointer(pkt.Start()))[:size]
+	buf := (*[1 << 30]byte)(pkt.StartAtOffset(0))[:size]
 	if !reflect.DeepEqual(buf, gtBuf) {
 		t.Errorf("Incorrect result:\ngot:  %x, \nwant: %x\n\n", buf, gtBuf)
 	}

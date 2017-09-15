@@ -11,7 +11,6 @@ import (
 	"github.com/intel-go/yanff/packet"
 	"sync"
 	"sync/atomic"
-	"unsafe"
 )
 
 // test-separate-part1: sends packets to 0 port, receives from 0 and 1 ports.
@@ -155,8 +154,8 @@ func generatePacket(pkt *packet.Packet, context flow.UserContext) {
 	} else {
 		(*packet.UDPHdr)(pkt.L4).DstPort = packet.SwapBytesUint16(dstPort3)
 	}
-	headerSize := uintptr(pkt.Data) - pkt.Start()
-	hdrs := (*[1000]byte)(unsafe.Pointer(pkt.Start()))[0:headerSize]
+	headerSize := uintptr(pkt.Data) - uintptr(pkt.StartAtOffset(0))
+	hdrs := (*[1000]byte)(pkt.StartAtOffset(0))[0:headerSize]
 	ptr := (*packetData)(pkt.Data)
 	ptr.HdrsMD5 = md5.Sum(hdrs)
 }
@@ -173,8 +172,8 @@ func checkInputFlow1(pkt *packet.Packet, context flow.UserContext) {
 		ptr := (*packetData)(pkt.Data)
 
 		// Recompute hash to check how many packets are valid
-		headerSize := uintptr(pkt.Data) - pkt.Start()
-		hdrs := (*[1000]byte)(unsafe.Pointer(pkt.Start()))[0:headerSize]
+		headerSize := uintptr(pkt.Data) - uintptr(pkt.StartAtOffset(0))
+		hdrs := (*[1000]byte)(pkt.StartAtOffset(0))[0:headerSize]
 		hash := md5.Sum(hdrs)
 
 		if hash != ptr.HdrsMD5 {
@@ -201,8 +200,8 @@ func checkInputFlow2(pkt *packet.Packet, context flow.UserContext) {
 		ptr := (*packetData)(pkt.Data)
 
 		// Recompute hash to check how many packets are valid
-		headerSize := uintptr(pkt.Data) - pkt.Start()
-		hdrs := (*[1000]byte)(unsafe.Pointer(pkt.Start()))[0:headerSize]
+		headerSize := uintptr(pkt.Data) - uintptr(pkt.StartAtOffset(0))
+		hdrs := (*[1000]byte)(pkt.StartAtOffset(0))[0:headerSize]
 		hash := md5.Sum(hdrs)
 
 		if hash != ptr.HdrsMD5 {

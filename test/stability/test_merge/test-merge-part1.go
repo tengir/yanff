@@ -11,7 +11,6 @@ import (
 	"github.com/intel-go/yanff/packet"
 	"sync"
 	"sync/atomic"
-	"unsafe"
 )
 
 // test-merge-part1:
@@ -136,8 +135,8 @@ func generatePacketGroup1(pkt *packet.Packet, context flow.UserContext) {
 	pkt.GetIPv4().SrcAddr = ipv4addr1
 
 	// Extract headers of packet
-	headerSize := uintptr(pkt.Data) - pkt.Start()
-	hdrs := (*[1000]byte)(unsafe.Pointer(pkt.Start()))[0:headerSize]
+	headerSize := uintptr(pkt.Data) - uintptr(pkt.StartAtOffset(0))
+	hdrs := (*[1000]byte)(pkt.StartAtOffset(0))[0:headerSize]
 	ptr := (*packetData)(pkt.Data)
 	ptr.HdrsMD5 = md5.Sum(hdrs)
 
@@ -154,8 +153,8 @@ func generatePacketGroup2(pkt *packet.Packet, context flow.UserContext) {
 	pkt.GetIPv4().SrcAddr = ipv4addr2
 
 	// Extract headers of packet
-	headerSize := uintptr(pkt.Data) - pkt.Start()
-	hdrs := (*[1000]byte)(unsafe.Pointer(pkt.Start()))[0:headerSize]
+	headerSize := uintptr(pkt.Data) - uintptr(pkt.StartAtOffset(0))
+	hdrs := (*[1000]byte)(pkt.StartAtOffset(0))[0:headerSize]
 	ptr := (*packetData)(pkt.Data)
 	ptr.HdrsMD5 = md5.Sum(hdrs)
 
@@ -175,8 +174,8 @@ func checkPackets(pkt *packet.Packet, context flow.UserContext) {
 		ptr := (*packetData)(pkt.Data)
 
 		// Recompute hash to check how many packets are valid
-		headerSize := uintptr(pkt.Data) - pkt.Start()
-		hdrs := (*[1000]byte)(unsafe.Pointer(pkt.Start()))[0:headerSize]
+		headerSize := uintptr(pkt.Data) - uintptr(pkt.StartAtOffset(0))
+		hdrs := (*[1000]byte)(pkt.StartAtOffset(0))[0:headerSize]
 		hash := md5.Sum(hdrs)
 
 		if hash != ptr.HdrsMD5 {
