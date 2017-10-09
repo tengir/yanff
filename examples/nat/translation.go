@@ -7,6 +7,7 @@ package nat
 import (
 	"fmt"
 	"sync"
+	"os"
 	"time"
 
 	"github.com/intel-go/yanff/common"
@@ -42,6 +43,11 @@ var (
 	mutex        sync.Mutex
 
 	emptyEntry = Tuple{addr: 0, port: 0}
+
+	// Debug variables
+	debug bool
+	Fpriin, Fpubin        []*os.File
+	Fpriout, Fpubout      []*os.File
 )
 
 func init() {
@@ -79,12 +85,26 @@ func allocateNewEgressConnection(protocol uint8, privEntry Tuple, publicAddr uin
 
 // PublicToPrivateTranslation does ingress translation.
 func PublicToPrivateTranslation(pkt *packet.Packet, ctx flow.UserContext) bool {
+	pi := ctx.(pairIndex)
+
+	if debug {
+		// Dump input packet
+		if Fpubin[pi.index] == nil {
+			Fpubin[pi.index], _ = os.Create(fmt.Sprintf("%dpubin.pcap", pi.index))
+			packet.WritePcapGlobalHdr(Fpubin[pi.index])
+			pkt.WritePcapOnePacket(Fpubin[pi.index])
+		}
+
+		pkt.WritePcapOnePacket(Fpubin[pi.index])
+	}
+
 	// Parse packet type and address
 	pktIPv4, _ := pkt.ParseAllKnownL3()
 	if pktIPv4 == nil {
 		// We don't currently support anything except for IPv4
 		return false
 	}
+
 	pktTCP, pktUDP, pktICMP := pkt.ParseAllKnownL4ForIPv4()
 	// Create a lookup key
 	protocol := pktIPv4.NextProtoID
@@ -130,7 +150,6 @@ func PublicToPrivateTranslation(pkt *packet.Packet, ctx flow.UserContext) bool {
 		checkTCPTermination(pktTCP, int(pub2priKey.port), pub2pri)
 	}
 
-	pi := ctx.(pairIndex)
 	// Do packet translation
 	pkt.Ether.DAddr = Natconfig.PortPairs[pi.index].PrivatePort.DstMACAddress
 	pkt.Ether.SAddr = PrivateMAC[pi.index]
@@ -144,17 +163,41 @@ func PublicToPrivateTranslation(pkt *packet.Packet, ctx flow.UserContext) bool {
 		// Only address is not modified in ICMP packets
 	}
 
+	if debug {
+		// Dump output packet
+		if Fpubout[pi.index] == nil {
+			Fpubout[pi.index], _ = os.Create(fmt.Sprintf("%dpubout.pcap", pi.index))
+			packet.WritePcapGlobalHdr(Fpubout[pi.index])
+		}
+
+		pkt.WritePcapOnePacket(Fpubout[pi.index])
+	}
+
 	return true
 }
 
 // PrivateToPublicTranslation does egress translation.
 func PrivateToPublicTranslation(pkt *packet.Packet, ctx flow.UserContext) bool {
+	pi := ctx.(pairIndex)
+
+	if debug {
+		// Dump input packet
+		if Fpriin[pi.index] == nil {
+			Fpriin[pi.index], _ = os.Create(fmt.Sprintf("%dpriin.pcap", pi.index))
+			packet.WritePcapGlobalHdr(Fpriin[pi.index])
+			pkt.WritePcapOnePacket(Fpriin[pi.index])
+		}
+
+		pkt.WritePcapOnePacket(Fpriin[pi.index])
+	}
+
 	// Parse packet type and address
 	pktIPv4, _ := pkt.ParseAllKnownL3()
 	if pktIPv4 == nil {
 		// We don't currently support anything except for IPv4
 		return false
 	}
+
 	pktTCP, pktUDP, pktICMP := pkt.ParseAllKnownL4ForIPv4()
 
 	// Create a lookup key
@@ -174,7 +217,6 @@ func PrivateToPublicTranslation(pkt *packet.Packet, ctx flow.UserContext) bool {
 		return false
 	}
 
-	pi := ctx.(pairIndex)
 	// Do lookup
 	var value Tuple
 	v, found := pri2pubTable[protocol].Load(pri2pubKey)
@@ -208,6 +250,16 @@ func PrivateToPublicTranslation(pkt *packet.Packet, ctx flow.UserContext) bool {
 		pktUDP.SrcPort = packet.SwapBytesUint16(value.port)
 	} else {
 		// Only address is not modified in ICMP packets
+	}
+
+	if debug {
+		// Dump output packet
+		if Fpriout[pi.index] == nil {
+			Fpriout[pi.index], _ = os.Create(fmt.Sprintf("%dpriout.pcap", pi.index))
+			packet.WritePcapGlobalHdr(Fpriout[pi.index])
+		}
+
+		pkt.WritePcapOnePacket(Fpriout[pi.index])
 	}
 
 	return true

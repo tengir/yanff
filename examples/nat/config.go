@@ -148,4 +148,8 @@ func InitFlows() {
 		flow.SetHandler(privateToPublic, PrivateToPublicTranslation, context)
 		flow.SetSender(privateToPublic, Natconfig.PortPairs[i].PublicPort.Index)
 	}
+	Fpriin = make([]*os.File, len(Natconfig.PortPairs))
+	Fpubin = make([]*os.File, len(Natconfig.PortPairs))
+	Fpriout = make([]*os.File, len(Natconfig.PortPairs))
+	Fpubout = make([]*os.File, len(Natconfig.PortPairs))
 }
